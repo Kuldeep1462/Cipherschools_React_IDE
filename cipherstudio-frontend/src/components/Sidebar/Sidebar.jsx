@@ -6,7 +6,7 @@ import FileExplorer from "../FileExplorer/FileExplorer"
 import "./Sidebar.css"
 
 function Sidebar() {
-  const { currentProject, setCurrentProject } = useContext(ProjectContext)
+  const { currentProject, setCurrentProject, saveProject } = useContext(ProjectContext)
   const [expandedFolders, setExpandedFolders] = useState({})
   const [showNewFileModal, setShowNewFileModal] = useState(false)
   const [newFileName, setNewFileName] = useState("")
@@ -27,18 +27,29 @@ function Sidebar() {
 
     const fullFileName = newFileName.includes(".") ? newFileName : `${newFileName}.${fileType}`
 
+    // Prevent duplicate filenames
+    if (currentProject?.files?.some(f => f.name === fullFileName)) {
+      alert("A file with this name already exists.")
+      return
+    }
+
     const newFile = {
       id: Date.now().toString(),
       name: fullFileName,
       content: getDefaultContent(fullFileName),
-      type: fileType,
+      type: "file",
+      language: inferLanguage(fullFileName),
     }
 
-    setCurrentProject({
+    const updatedProject = {
       ...currentProject,
       files: [...(currentProject.files || []), newFile],
       selectedFile: newFile,
-    })
+    }
+    setCurrentProject(updatedProject)
+    if (currentProject?.projectId) {
+      saveProject(currentProject.projectId, updatedProject)
+    }
 
     setShowNewFileModal(false)
     setNewFileName("")
@@ -76,8 +87,19 @@ function Sidebar() {
   <h1>Welcome</h1>
 </body>
 </html>`
+    } else if (fileName.endsWith('.js')) {
+      return `// ${fileName}\nconsole.log('Hello from ${fileName}');`
     }
     return ""
+  }
+
+  const inferLanguage = (fileName) => {
+    if (fileName.endsWith('.jsx')) return 'jsx'
+    if (fileName.endsWith('.js')) return 'javascript'
+    if (fileName.endsWith('.css')) return 'css'
+    if (fileName.endsWith('.json')) return 'json'
+    if (fileName.endsWith('.html')) return 'html'
+    return 'plaintext'
   }
 
   return (

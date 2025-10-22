@@ -5,7 +5,7 @@ import { ProjectContext } from "../../context/ProjectContext"
 import "./FileExplorer.css"
 
 function FileExplorer({ files, expandedFolders, onToggleFolder }) {
-  const { currentProject, setCurrentProject } = useContext(ProjectContext)
+  const { currentProject, setCurrentProject, saveProject, updateProject } = useContext(ProjectContext)
   const [renamingFileId, setRenamingFileId] = useState(null)
   const [newFileName, setNewFileName] = useState("")
 
@@ -18,11 +18,13 @@ function FileExplorer({ files, expandedFolders, onToggleFolder }) {
   }
 
   const handleFileClick = (file) => {
-    if (currentProject) {
-      setCurrentProject({
-        ...currentProject,
-        selectedFile: file,
-      })
+    if (!currentProject) return
+    setCurrentProject(prev => {
+      const fileObj = prev.files.find(f => f.id === file.id) || file
+      return { ...prev, selectedFile: fileObj }
+    })
+    if (currentProject.projectId) {
+      updateProject(currentProject.projectId, { selectedFile: file.id })
     }
   }
 
@@ -34,10 +36,11 @@ function FileExplorer({ files, expandedFolders, onToggleFolder }) {
   const handleSaveRename = (file) => {
     if (newFileName.trim() && newFileName !== file.name) {
       const updatedFiles = currentProject.files.map((f) => (f.id === file.id ? { ...f, name: newFileName } : f))
-      setCurrentProject({
-        ...currentProject,
-        files: updatedFiles,
-      })
+      const updatedProject = { ...currentProject, files: updatedFiles }
+      setCurrentProject(updatedProject)
+      if (currentProject?.projectId) {
+        saveProject(currentProject.projectId, updatedProject)
+      }
     }
     setRenamingFileId(null)
     setNewFileName("")
@@ -46,11 +49,15 @@ function FileExplorer({ files, expandedFolders, onToggleFolder }) {
   const handleDeleteFile = (file) => {
     if (window.confirm(`Are you sure you want to delete ${file.name}?`)) {
       const updatedFiles = currentProject.files.filter((f) => f.id !== file.id)
-      setCurrentProject({
+      const updatedProject = {
         ...currentProject,
         files: updatedFiles,
         selectedFile: updatedFiles.length > 0 ? updatedFiles[0] : null,
-      })
+      }
+      setCurrentProject(updatedProject)
+      if (currentProject?.projectId) {
+        saveProject(currentProject.projectId, updatedProject)
+      }
     }
   }
 

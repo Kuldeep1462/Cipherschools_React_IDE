@@ -26,25 +26,35 @@ function Preview() {
     const cssFiles = files.filter((f) => f.name.endsWith(".css"))
     const cssContent = cssFiles.map((f) => f.content).join("\n")
 
+    const jsxFiles = files.filter((f) => f.name.endsWith(".jsx"))
+
     // Transform ES6 modules to global variables for browser compatibility
     const transformCode = (code, fileName) => {
-      if (fileName === "App.jsx") {
-        // Convert export default to window.App
-        return code.replace(/export\s+default\s+function\s+(\w+)/, 'window.$1 = function $1')
-          .replace(/export\s+default\s+/, 'window.App = ')
+      let transformed = code
+
+      // Remove import statements
+      transformed = transformed.replace(/import\s+.*?\s+from\s+['"].*?['"];?\s*/g, '')
+      transformed = transformed.replace(/import\s+['"].*?['"];?\s*/g, '')
+
+      if (fileName.endsWith(".jsx")) {
+        // Convert export default to window.ComponentName
+        const componentName = fileName.replace('.jsx', '')
+        transformed = transformed.replace(/export\s+default\s+function\s+(\w+)/, `window.${componentName} = function $1`)
+        transformed = transformed.replace(/export\s+default\s+/, `window.${componentName} = `)
       } else if (fileName === "index.js") {
         // Convert imports to global references and execution
-        return code
+        transformed = transformed
           .replace(/import\s+React\s+from\s+['"]react['"];?\s*/g, '')
           .replace(/import\s+ReactDOM\s+from\s+['"]react-dom\/client['"];?\s*/g, '')
-          .replace(/import\s+(\w+)\s+from\s+['"]\.\/(\w+)['"];?\s*/g, '')
           .replace(/const\s+root\s*=\s*ReactDOM\.createRoot\(document\.getElementById\('root'\)\);\s*root\.render\(.*?\);/, 'ReactDOM.createRoot(document.getElementById(\'root\')).render(React.createElement(window.App));')
       }
-      return code
+      return transformed
     }
 
-    const transformedAppCode = transformCode(appFile.content, "App.jsx")
+    const transformedJsxCodes = jsxFiles.map(file => transformCode(file.content, file.name))
     const transformedIndexCode = transformCode(indexFile.content, "index.js")
+
+    const jsxScripts = transformedJsxCodes.map(code => `<script type="text/babel" data-presets="react">${code}</script>`).join('\n')
 
     const html = `
       <!DOCTYPE html>
@@ -86,9 +96,7 @@ function Preview() {
         </head>
         <body>
           <div id="root"></div>
-          <script type="text/babel" data-presets="react">
-            ${transformedAppCode}
-          </script>
+          ${jsxScripts}
           <script type="text/babel" data-presets="react">
             ${transformedIndexCode}
           </script>
@@ -125,39 +133,55 @@ function Preview() {
   }, [currentProject?.files])
 
   const refreshPreview = useCallback(() => {
-    setIsLoading(true)
-    setError(null)
-    setConsoleOutput([])
-    const startTime = performance.now()
+    console.log("🔄 Preview: Starting refresh");
+    setIsLoading(true);
+    setError(null);
+    setConsoleOutput([]);
+    const startTime = performance.now();
 
     try {
-      const html = generatePreviewHTML()
-      const blob = new Blob([html], { type: "text/html" })
-      const url = URL.createObjectURL(blob)
+      // Log current project state
+      console.log("📄 Preview: Current files", {
+        files: currentProject?.files?.map(f => ({
+          name: f.name,
+          contentLength: f.content?.length,
+          preview: f.content?.substring(0, 50) + "..."
+        }))
+      });
+
+      const html = generatePreviewHTML();
+      console.log("🔨 Preview: Generated HTML length:", html.length);
+      
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
 
       if (iframeRef.current) {
+        console.log("🖼️ Preview: Updating iframe content");
         iframeRef.current.onload = () => {
-          const endTime = performance.now()
-          setExecutionTime(Math.round(endTime - startTime))
+          const endTime = performance.now();
+          setExecutionTime(Math.round(endTime - startTime));
 
           try {
-            const iframeWindow = iframeRef.current.contentWindow
+            const iframeWindow = iframeRef.current.contentWindow;
             if (iframeWindow.__consoleLogs) {
-              setConsoleOutput(iframeWindow.__consoleLogs)
+              console.log("📟 Preview: Captured console output", iframeWindow.__consoleLogs);
+              setConsoleOutput(iframeWindow.__consoleLogs);
             }
           } catch (e) {
-            // Cross-origin restrictions may prevent access
+            console.warn("⚠️ Preview: Could not access iframe console", e);
           }
 
-          setIsLoading(false)
-        }
-        iframeRef.current.src = url
+          setIsLoading(false);
+          console.log("✅ Preview: Refresh complete");
+        };
+        iframeRef.current.src = url;
       }
     } catch (err) {
-      setError(err.message)
-      setIsLoading(false)
+      console.error("❌ Preview: Refresh failed", err);
+      setError(err.message);
+      setIsLoading(false);
     }
-  }, [generatePreviewHTML])
+  }, [generatePreviewHTML, currentProject?.files])
 
   useEffect(() => {
     refreshPreview()
@@ -166,10 +190,23 @@ function Preview() {
   // Force refresh when selectedFile changes to ensure preview updates
   useEffect(() => {
     if (currentProject?.selectedFile) {
-      console.log("Selected file changed, refreshing preview")
-      refreshPreview()
+      console.log("Selected file or content changed, refreshing preview")
+      const selectedFileContent = currentProject.files.find(
+        f => f.id === currentProject.selectedFile.id
+      )?.content
+      
+      // Add a small delay to ensure state is settled
+      const timer = setTimeout(() => {
+        refreshPreview()
+      }, 100)
+      
+      return () => clearTimeout(timer)
     }
-  }, [currentProject?.selectedFile, refreshPreview])
+  }, [
+    currentProject?.selectedFile?.id,
+    currentProject?.files?.map(f => f.content).join(''),
+    refreshPreview
+  ])
 
   return (
     <div className="preview-container">

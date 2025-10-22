@@ -79,20 +79,34 @@ exports.updateProject = async (req, res) => {
     console.log("Backend updateProject called for:", projectId)
     console.log("Received data:", { filesCount: files?.length, dependencies, name, description, selectedFile })
 
-    const updateData = {}
-    if (files !== undefined) updateData.files = files
-    if (dependencies !== undefined) updateData.dependencies = dependencies
-    if (name !== undefined) updateData.name = name
-    if (description !== undefined) updateData.description = description
-    if (selectedFile !== undefined) updateData.selectedFile = selectedFile
+    // Use findOne and save to ensure proper handling of Map/arrays
+    let project = await Project.findOne({ projectId })
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" })
+    }
+    
+    // Update fields individually to ensure Mongoose marks them modified
+    if (Array.isArray(files)) {
+      project.files = files
+      project.markModified('files')
+    }
 
-    console.log("Update data:", updateData)
+    if (dependencies !== undefined) {
+      // Accept both Map and plain objects
+      if (dependencies instanceof Map) {
+        project.dependencies = dependencies
+      } else if (typeof dependencies === 'object' && dependencies !== null) {
+        project.dependencies = new Map(Object.entries(dependencies))
+      }
+      project.markModified('dependencies')
+    }
 
-    const project = await Project.findOneAndUpdate(
-      { projectId },
-      updateData,
-      { new: true },
-    )
+    if (name !== undefined) project.name = name
+    if (description !== undefined) project.description = description
+    if (selectedFile !== undefined) project.selectedFile = selectedFile
+    
+    // Save the updated document
+    project = await project.save()
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" })

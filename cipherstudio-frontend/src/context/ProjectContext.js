@@ -36,22 +36,47 @@ export const ProjectProvider = ({ children }) => {
     setLoading(true)
     try {
       console.log("Loading project:", projectId)
+      let cachedSelectedId = null
       const cached = localStorage.getItem(`project-${projectId}`)
       if (cached) {
         const data = JSON.parse(cached)
         console.log("Loaded from cache, files:", data.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
-        setCurrentProject(data)
+        // Normalize selectedFile from cache as well (it might be an id string)
+        let normalizedCached = { ...data }
+        if (data.selectedFile && typeof data.selectedFile === "string") {
+          const fileObj = data.files?.find(f => f.id === data.selectedFile)
+          normalizedCached.selectedFile = fileObj || null
+        }
+        cachedSelectedId = normalizedCached.selectedFile?.id || null
+        setCurrentProject(normalizedCached)
       }
 
       // Then fetch from backend to sync
       const response = await fetch(`http://localhost:5000/api/projects/${projectId}`)
       const data = await response.json()
       console.log("Loaded from backend, files:", data.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
-      setCurrentProject(data)
-      localStorage.setItem(`project-${projectId}`, JSON.stringify(data))
+      // Normalize selectedFile: backend may return an id string
+      let normalized = { ...data }
+      if (data.selectedFile && typeof data.selectedFile === "string") {
+        const fileObj = data.files?.find(f => f.id === data.selectedFile)
+        normalized.selectedFile = fileObj || null
+      }
+      // If backend didn't return a selected file, carry over cached/current selection if still present
+      if (!normalized.selectedFile && (cachedSelectedId || currentProject?.selectedFile?.id)) {
+        const carryId = cachedSelectedId || currentProject?.selectedFile?.id
+        const carryFile = normalized.files?.find(f => f.id === carryId)
+        if (carryFile) {
+          normalized.selectedFile = carryFile
+        } else if (normalized.files && normalized.files.length > 0) {
+          // fall back to first file to ensure non-null
+          normalized.selectedFile = normalized.files[0]
+        }
+      }
+      setCurrentProject(normalized)
+      localStorage.setItem(`project-${projectId}`, JSON.stringify(normalized))
       // Update last saved files reference when loading
-      lastSavedFilesRef.current = JSON.stringify(data.files.map(f => ({ id: f.id, content: f.content })))
-      return data
+      lastSavedFilesRef.current = JSON.stringify(normalized.files.map(f => ({ id: f.id, content: f.content })))
+      return normalized
     } catch (error) {
       console.error("Error loading project:", error)
     } finally {
@@ -61,39 +86,78 @@ export const ProjectProvider = ({ children }) => {
 
   const saveProject = useCallback(async (projectId, projectData) => {
     try {
-      console.log("Saving project:", projectId)
-      console.log("Files to save:", projectData.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
+      console.log("🚀 Context: Starting project save", {
+        projectId,
+        fileCount: projectData.files?.length,
+        selectedFile: projectData.selectedFile?.name
+      });
+
+      // Validate data before sending
+      if (!projectData.files || !Array.isArray(projectData.files)) {
+        throw new Error("Invalid files array in project data");
+      }
+
+      const fileDetails = projectData.files.map(f => ({
+        name: f.name,
+        id: f.id,
+        contentLength: f.content?.length || 0,
+        preview: f.content?.substring(0, 50) + "..."
+      }));
+      console.log("📦 Context: Files to save:", fileDetails);
+
+      const payload = {
+        files: projectData.files,
+        dependencies: projectData.dependencies,
+        name: projectData.name,
+        description: projectData.description,
+        selectedFile: projectData.selectedFile?.id || projectData.selectedFile,
+      };
+      
       const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          files: projectData.files,
-          dependencies: projectData.dependencies,
-          name: projectData.name,
-          description: projectData.description,
-          selectedFile: projectData.selectedFile?.id || projectData.selectedFile,
-        }),
-      })
+        body: JSON.stringify(payload),
+      });
+
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
-      const data = await response.json()
-      console.log("Project saved successfully, received back:", data.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
-      localStorage.setItem(`project-${projectId}`, JSON.stringify(data))
-      // Update current project state with saved data
-      setCurrentProject(data)
-      // Update last saved files reference
-      lastSavedFilesRef.current = JSON.stringify(data.files.map(f => ({ id: f.id, content: f.content })))
-      return data
+
+      const data = await response.json();
+      console.log("✅ Context: Save successful", {
+        receivedFiles: data.files?.length,
+        selectedFile: data.selectedFile
+      });
+
+      // Normalize selectedFile if backend returned an id
+      let normalized = { ...data }
+      if (data.selectedFile && typeof data.selectedFile === "string") {
+        const fileObj = data.files?.find(f => f.id === data.selectedFile)
+        normalized.selectedFile = fileObj || null
+      }
+
+      // Store in localStorage
+      localStorage.setItem(`project-${projectId}`, JSON.stringify(normalized));
+      
+      // Update last saved reference first
+      lastSavedFilesRef.current = JSON.stringify(normalized.files.map(f => ({
+        id: f.id,
+        content: f.content,
+        name: f.name
+      })));
+
+      // Then update current project state
+      setCurrentProject(normalized);
+      
+      return normalized;
     } catch (error) {
-      console.error("Error saving project:", error)
-      // Still save to localStorage even if backend fails
-      localStorage.setItem(`project-${projectId}`, JSON.stringify(projectData))
-      // Update current project state even on error to keep local changes
-      setCurrentProject(projectData)
+      console.error("❌ Context: Save failed", error);
+      // Fallback to localStorage
+      localStorage.setItem(`project-${projectId}`, JSON.stringify(projectData));
+      setCurrentProject(projectData);
     }
   }, [])
 
@@ -101,22 +165,34 @@ export const ProjectProvider = ({ children }) => {
     if (!autoSaveEnabled || !currentProject?.files) return
 
     // Check if files have actually changed since last save
-    const currentFilesString = JSON.stringify(currentProject.files.map(f => ({ id: f.id, content: f.content })))
-    const lastSavedFilesString = lastSavedFilesRef.current
+    const currentFiles = currentProject.files.map(f => ({ 
+      id: f.id, 
+      content: f.content,
+      name: f.name 
+    }))
+    const lastSavedFiles = lastSavedFilesRef.current ? 
+      JSON.parse(lastSavedFilesRef.current) : []
 
-    if (currentFilesString === lastSavedFilesString) {
+    // Compare files content
+    const hasChanges = currentFiles.some(currentFile => {
+      const lastSavedFile = lastSavedFiles.find(f => f.id === currentFile.id)
+      return !lastSavedFile || 
+        lastSavedFile.content !== currentFile.content
+    })
+
+    if (!hasChanges) {
       return // No changes, don't save
     }
 
     console.log("Auto-save triggered for project:", currentProject.projectId)
     const timer = setTimeout(() => {
       console.log("Executing auto-save")
-      lastSavedFilesRef.current = currentFilesString // Update last saved state
+      lastSavedFilesRef.current = JSON.stringify(currentFiles) // Store the current state
       saveProject(currentProject.projectId, currentProject)
     }, 2000)
 
     return () => clearTimeout(timer)
-  }, [currentProject?.files, currentProject?.selectedFile, autoSaveEnabled, saveProject])
+  }, [currentProject?.files, autoSaveEnabled, saveProject])
 
   const updateProject = useCallback(async (projectId, updates) => {
     try {
@@ -128,9 +204,15 @@ export const ProjectProvider = ({ children }) => {
         body: JSON.stringify(updates),
       })
       const data = await response.json()
-      setCurrentProject(data)
-      localStorage.setItem(`project-${projectId}`, JSON.stringify(data))
-      return data
+      // Normalize selectedFile if needed
+      let normalized = { ...data }
+      if (data.selectedFile && typeof data.selectedFile === "string") {
+        const fileObj = data.files?.find(f => f.id === data.selectedFile)
+        normalized.selectedFile = fileObj || null
+      }
+      setCurrentProject(normalized)
+      localStorage.setItem(`project-${projectId}`, JSON.stringify(normalized))
+      return normalized
     } catch (error) {
       console.error("Error updating project:", error)
     }
