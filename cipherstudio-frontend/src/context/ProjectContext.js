@@ -2,6 +2,8 @@
 
 import { createContext, useState, useCallback, useEffect, useRef } from "react"
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
+
 export const ProjectContext = createContext()
 
 export const ProjectProvider = ({ children }) => {
@@ -13,7 +15,7 @@ export const ProjectProvider = ({ children }) => {
   const createProject = useCallback(async (name, description) => {
     setLoading(true)
     try {
-      const response = await fetch("http://localhost:5000/api/projects", {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -52,7 +54,7 @@ export const ProjectProvider = ({ children }) => {
       }
 
       // Then fetch from backend to sync
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`)
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`)
       const data = await response.json()
       console.log("Loaded from backend, files:", data.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
       // Normalize selectedFile: backend may return an id string
@@ -113,7 +115,7 @@ export const ProjectProvider = ({ children }) => {
         selectedFile: projectData.selectedFile?.id || projectData.selectedFile,
       };
       
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -196,7 +198,7 @@ export const ProjectProvider = ({ children }) => {
 
   const updateProject = useCallback(async (projectId, updates) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +222,7 @@ export const ProjectProvider = ({ children }) => {
 
   const deleteProject = useCallback(async (projectId) => {
     try {
-      await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "DELETE",
       })
       localStorage.removeItem(`project-${projectId}`)
