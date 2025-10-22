@@ -1,0 +1,121 @@
+.file-explorer {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-explorer-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-explorer-item-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.file-explorer-item-header:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+.file-explorer-item-header.active {
+  background-color: var(--color-accent-secondary);
+}
+
+.file-explorer-toggle {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.file-explorer-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.file-explorer-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  font-size: 12px;
+}
+
+.file-explorer-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-explorer-children {
+  list-style: none;
+  margin-left: 12px;
+}
+
+.file-explorer-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.file-explorer-rename-input {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 13px;
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: 3px;
+  color: var(--color-text-primary);
+  font-family: inherit;
+}
+
+.file-explorer-rename-input:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.1);
+}
+
+.file-explorer-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.file-explorer-action-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  color: var(--color-text-secondary);
+}
+
+.file-explorer-action-btn:hover {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.file-explorer-action-btn:active {
+  transform: scale(0.95);
+}

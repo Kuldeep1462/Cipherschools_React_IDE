@@ -1,0 +1,31 @@
+.code-executor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.executor-output {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--color-bg-primary);
+  padding: 12px;
+  font-family: "Fira Code", monospace;
+  font-size: 12px;
+}
+
+.executor-line {
+  margin-bottom: 4px;
+  padding: 2px 0;
+}
+
+.executor-log {
+  color: var(--color-text-primary);
+}
+
+.executor-error {
+  color: #ff6b6b;
+}
+
+.executor-result {
+  color: #51cf66;
+}
