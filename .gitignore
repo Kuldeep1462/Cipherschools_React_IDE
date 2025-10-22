@@ -20,6 +20,9 @@ node_modules/
 /out
 /.next
 
+# Frontend build output
+/cipherstudio-frontend/build/
+
 # Local env files
 .env
 .env.local
