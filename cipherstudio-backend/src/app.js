@@ -14,7 +14,8 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001',
       process.env.FRONTEND_URL,
-      'https://cipherschools-react-k2krpnmzv.vercel.app'
+      'https://cipherschools-react-k2krpnmzv.vercel.app',
+      'https://cipherschoolside.vercel.app'
     ].filter(Boolean)
     
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -27,9 +28,13 @@ const corsOptions = {
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'user-id'],
   optionsSuccessStatus: 200
 }
 
+// Handle preflight for all routes
+app.options('*', cors(corsOptions))
 app.use(cors(corsOptions))
 app.use(express.json())
 
