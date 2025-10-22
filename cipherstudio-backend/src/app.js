@@ -9,7 +9,23 @@ const app = express()
 
 // CORS configuration for production
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      process.env.FRONTEND_URL,
+      'https://cipherschools-react-k2krpnmzv.vercel.app'
+    ].filter(Boolean)
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('vercel.app')) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 }
