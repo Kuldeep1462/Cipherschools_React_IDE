@@ -21,6 +21,7 @@ export const api = {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       })
       return response.json()
@@ -32,6 +33,7 @@ export const api = {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       })
       return response.json()
@@ -43,6 +45,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: "POST",
         headers: getAuthHeaders(),
+        credentials: "include",
         body: JSON.stringify({ name, description }),
       })
       return response.json()
@@ -51,6 +54,7 @@ export const api = {
     get: async (projectId) => {
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         headers: getAuthHeaders(),
+        credentials: "include",
       })
       return response.json()
     },
@@ -59,6 +63,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "PUT",
         headers: getAuthHeaders(),
+        credentials: "include",
         body: JSON.stringify(data),
       })
       return response.json()
@@ -68,6 +73,7 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
+        credentials: "include",
       })
       return response.json()
     },
@@ -75,6 +81,7 @@ export const api = {
     getUserProjects: async () => {
       const response = await fetch(`${API_BASE_URL}/projects/user/projects`, {
         headers: getAuthHeaders(),
+        credentials: "include",
       })
       return response.json()
     },

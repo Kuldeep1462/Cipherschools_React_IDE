@@ -21,6 +21,7 @@ export const ProjectProvider = ({ children }) => {
           "Content-Type": "application/json",
           "user-id": "user-123",
         },
+        credentials: "include",
         body: JSON.stringify({ name, description }),
       })
       const data = await response.json()
@@ -54,7 +55,9 @@ export const ProjectProvider = ({ children }) => {
       }
 
       // Then fetch from backend to sync
-      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`)
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+        credentials: "include",
+      })
       const data = await response.json()
       console.log("Loaded from backend, files:", data.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
       // Normalize selectedFile: backend may return an id string
@@ -120,6 +123,7 @@ export const ProjectProvider = ({ children }) => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -203,6 +207,7 @@ export const ProjectProvider = ({ children }) => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(updates),
       })
       const data = await response.json()
@@ -224,6 +229,7 @@ export const ProjectProvider = ({ children }) => {
     try {
       await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "DELETE",
+        credentials: "include",
       })
       localStorage.removeItem(`project-${projectId}`)
       setCurrentProject(null)
