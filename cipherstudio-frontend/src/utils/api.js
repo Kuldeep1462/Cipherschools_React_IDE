@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
+// Normalize API base: accept values with or without trailing /api
+const RAW_API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
+const __trimmed = RAW_API_BASE_URL.replace(/\/+$/, '')
+const API_BASE_URL = __trimmed.endsWith('/api') ? __trimmed : `${__trimmed}/api`
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token")

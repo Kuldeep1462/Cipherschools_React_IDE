@@ -2,7 +2,10 @@
 
 import { createContext, useState, useCallback, useEffect, useRef } from "react"
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
+// Normalize API base: accept values with or without trailing /api
+const RAW_API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
+const _trimmed = RAW_API_BASE.replace(/\/+$/, '')
+const API_BASE_URL = _trimmed.endsWith('/api') ? _trimmed : `${_trimmed}/api`
 
 export const ProjectContext = createContext()
 
