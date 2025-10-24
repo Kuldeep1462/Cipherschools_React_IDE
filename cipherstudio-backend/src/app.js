@@ -61,6 +61,11 @@ app.use(express.urlencoded({ extended: true }))
 app.use("/api/auth", authRoutes)
 app.use("/api/projects", projectRoutes)
 
+// Root route to help default platform health checks (200 OK)
+app.get('/', (req, res) => {
+  res.status(200).send('CipherStudio backend running')
+})
+
 app.get("/api/health", (req, res) => {
   const db = getDBStatus ? getDBStatus() : { connected: null, lastError: null }
   res.json({ status: "ok", db })
