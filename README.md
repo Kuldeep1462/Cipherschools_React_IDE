@@ -2,6 +2,10 @@
 
 A full-featured, browser-based React IDE that allows developers to write, run, and preview React code directly in the browser without any setup. Similar to CodeSandbox and NextLeap.js, but built from scratch.
 
+## 🌐 Live Website
+
+[https://cipherschoolside.vercel.app/](https://cipherschoolside.vercel.app/)
+
 ## 🚀 Quick Start
 
 ### Prerequisites
