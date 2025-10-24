@@ -4,6 +4,7 @@ require("dotenv").config()
 
 const projectRoutes = require("./routes/projectRoutes")
 const authRoutes = require("./routes/authRoutes")
+const { getDBStatus } = require("./config/db")
 
 const app = express()
 
@@ -61,7 +62,8 @@ app.use("/api/auth", authRoutes)
 app.use("/api/projects", projectRoutes)
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "Backend is running" })
+  const db = getDBStatus ? getDBStatus() : { connected: null, lastError: null }
+  res.json({ status: "ok", db })
 })
 
 module.exports = app
