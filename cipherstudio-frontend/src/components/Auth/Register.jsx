@@ -2,10 +2,8 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
+import { api } from "../../utils/api"
 import "./Auth.css"
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
 
 function Register() {
   const navigate = useNavigate()
@@ -49,15 +47,22 @@ function Register() {
 
     setIsLoading(true)
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
-        email: email.trim().toLowerCase(),
-        password,
-      })
-      localStorage.setItem("token", response.data.token)
-      localStorage.setItem("userId", response.data.user.id)
-      navigate("/")
+      const data = await api.auth.register(email.trim().toLowerCase(), password)
+      if (data?.error) {
+        setError(data.error)
+        setIsLoading(false)
+        return
+      }
+      if (data?.token && data?.user?.id) {
+        localStorage.setItem("token", data.token)
+        localStorage.setItem("userId", data.user.id)
+        try { window.dispatchEvent(new CustomEvent("auth-changed", { detail: { isSignedIn: true, userId: data.user.id } })) } catch {}
+        navigate("/")
+      } else {
+        setError("Registration failed. Please try again.")
+      }
     } catch (err) {
-      setError(err.response?.data?.error || "Registration failed. Please try again.")
+      setError(typeof err === 'string' ? err : (err?.message || "Registration failed. Please try again."))
     } finally {
       setIsLoading(false)
     }

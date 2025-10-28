@@ -2,10 +2,8 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
+import { api } from "../../utils/api"
 import "./Auth.css"
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api"
 
 function Login() {
   const navigate = useNavigate()
@@ -16,16 +14,17 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email,
-        password,
-      })
-  localStorage.setItem("token", response.data.token)
-  localStorage.setItem("userId", response.data.user.id)
-  try { window.dispatchEvent(new CustomEvent("auth-changed", { detail: { isSignedIn: true, userId: response.data.user.id } })) } catch {}
+      const data = await api.auth.login(email, password)
+      if (data?.error) {
+        setError(data.error)
+        return
+      }
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("userId", data.user.id)
+      try { window.dispatchEvent(new CustomEvent("auth-changed", { detail: { isSignedIn: true, userId: data.user.id } })) } catch {}
       navigate("/")
     } catch (err) {
-      setError(err.response?.data?.error || "Login failed. Please try again.")
+      setError(typeof err === 'string' ? err : (err?.message || "Login failed. Please try again."))
     }
   }
 
