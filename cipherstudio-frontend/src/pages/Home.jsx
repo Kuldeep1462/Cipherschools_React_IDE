@@ -3,6 +3,7 @@
 import { useState, useContext, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ProjectContext } from "../context/ProjectContext"
+import { api } from "../utils/api"
 import "./Home.css"
 
 function Home() {
@@ -11,12 +12,30 @@ function Home() {
   const [projectName, setProjectName] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [recentProjects, setRecentProjects] = useState([])
+  const [myProjects, setMyProjects] = useState([])
+  const [isSignedIn, setIsSignedIn] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem("recentProjects")
-    if (stored) {
-      setRecentProjects(JSON.parse(stored))
+    const load = async () => {
+      const token = localStorage.getItem("token")
+      setIsSignedIn(!!token)
+      if (!token) {
+        const stored = localStorage.getItem("recentProjects")
+        if (stored) setRecentProjects(JSON.parse(stored))
+        setMyProjects([])
+        return
+      }
+      try {
+        const projects = await api.projects.getUserProjects()
+        if (Array.isArray(projects)) setMyProjects(projects)
+      } catch {
+        setMyProjects([])
+      }
     }
+    load()
+    const handler = () => load()
+    window.addEventListener("auth-changed", handler)
+    return () => window.removeEventListener("auth-changed", handler)
   }, [])
 
   const handleCreateProject = async () => {
@@ -42,7 +61,15 @@ function Home() {
           <button className="home-button home-button-primary" onClick={() => setShowForm(!showForm)}>
             {showForm ? "Cancel" : "Create New Project"}
           </button>
-          <button className="home-button home-button-secondary">View Examples</button>
+          <button
+            className="home-button home-button-secondary"
+            onClick={async () => {
+              const project = await createProject("Example: Starter", "React starter example")
+              if (project?.projectId) navigate(`/editor/${project.projectId}`)
+            }}
+          >
+            View Examples
+          </button>
         </div>
 
         {showForm && (
@@ -70,7 +97,24 @@ function Home() {
           </div>
         )}
 
-        {recentProjects.length > 0 && (
+        {isSignedIn && myProjects.length > 0 ? (
+          <div className="home-projects">
+            <h2 className="home-projects-title">My Projects</h2>
+            <div className="home-projects-grid">
+              {myProjects.map((project) => (
+                <div
+                  key={project.projectId}
+                  className="project-card"
+                  onClick={() => navigate(`/editor/${project.projectId}`)}
+                >
+                  <div className="project-card-name">{project.name}</div>
+                  <div className="project-card-description">{project.description || "No description"}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {!isSignedIn ? null : (myProjects.length === 0 && recentProjects.length > 0) ? (
           <div className="home-projects">
             <h2 className="home-projects-title">Recent Projects</h2>
             <div className="home-projects-grid">
@@ -86,7 +130,7 @@ function Home() {
               ))}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

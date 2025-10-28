@@ -15,15 +15,32 @@ export const ProjectProvider = ({ children }) => {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
   const lastSavedFilesRef = useRef(null)
 
+  // Ensure a stable per-browser guest id when not signed in
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    let uid = localStorage.getItem("userId")
+    if (!token && !uid) {
+      const guestId = `guest-${Math.random().toString(36).slice(2)}-${Date.now()}`
+      localStorage.setItem("userId", guestId)
+    }
+  }, [])
+
+  const getAuthHeaders = (ownerIdOverride = null) => {
+    const token = localStorage.getItem("token")
+    const userId = localStorage.getItem("userId")
+    const headers = { "Content-Type": "application/json" }
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    const ownerToSend = ownerIdOverride || userId
+    if (ownerToSend) headers["user-id"] = ownerToSend
+    return headers
+  }
+
   const createProject = useCallback(async (name, description) => {
     setLoading(true)
     try {
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "user-id": "user-123",
-        },
+        headers: getAuthHeaders(),
         credentials: "include",
         body: JSON.stringify({ name, description }),
       })
@@ -58,8 +75,11 @@ export const ProjectProvider = ({ children }) => {
       }
 
       // Then fetch from backend to sync
+      // Try to use cached owner id to ensure access even if auth changed (e.g., guest -> signed-in)
+      const ownerIdFromCache = cached ? (JSON.parse(cached)?.userId || null) : null
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         credentials: "include",
+        headers: getAuthHeaders(ownerIdFromCache),
       })
       const data = await response.json()
       console.log("Loaded from backend, files:", data.files?.map(f => ({ name: f.name, contentLength: f.content?.length })))
@@ -123,9 +143,7 @@ export const ProjectProvider = ({ children }) => {
       
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(projectData?.userId || currentProject?.userId || null),
         credentials: "include",
         body: JSON.stringify(payload),
       });
@@ -207,9 +225,7 @@ export const ProjectProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(currentProject?.userId || null),
         credentials: "include",
         body: JSON.stringify(updates),
       })
@@ -232,6 +248,7 @@ export const ProjectProvider = ({ children }) => {
     try {
       await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "DELETE",
+        headers: getAuthHeaders(currentProject?.userId || null),
         credentials: "include",
       })
       localStorage.removeItem(`project-${projectId}`)

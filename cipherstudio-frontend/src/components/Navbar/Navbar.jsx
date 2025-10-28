@@ -11,6 +11,7 @@ function Navbar() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext)
   const { autoSaveEnabled, setAutoSaveEnabled } = useContext(ProjectContext)
   const [saveStatus, setSaveStatus] = useState("saved")
+  const [isSignedIn, setIsSignedIn] = useState(false)
 
   useEffect(() => {
     setSaveStatus("saved")
@@ -19,6 +20,20 @@ function Navbar() {
     }, 2000)
     return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    setIsSignedIn(!!localStorage.getItem("token"))
+  }, [])
+
+  const handleSignOut = () => {
+    localStorage.removeItem("token")
+    // Keep userId if you want to continue accessing guest-owned projects; otherwise clear it.
+    // localStorage.removeItem("userId")
+    setIsSignedIn(false)
+    // Notify app about auth change
+    try { window.dispatchEvent(new CustomEvent("auth-changed", { detail: { isSignedIn: false } })) } catch {}
+    navigate("/")
+  }
 
   return (
     <nav className="navbar">
@@ -40,7 +55,11 @@ function Navbar() {
         <button className="navbar-button navbar-button-secondary" onClick={toggleTheme}>
           {isDarkMode ? "☀️ Light" : "🌙 Dark"}
         </button>
-        <button className="navbar-button" onClick={() => navigate("/login")}>Sign In</button>
+        {isSignedIn ? (
+          <button className="navbar-button navbar-button-secondary" onClick={handleSignOut}>Sign Out</button>
+        ) : (
+          <button className="navbar-button" onClick={() => navigate("/login")}>Sign In</button>
+        )}
       </div>
     </nav>
   )

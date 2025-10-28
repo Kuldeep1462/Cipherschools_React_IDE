@@ -174,6 +174,14 @@ function Editor() {
     return "plaintext"
   }
 
+  const getModelUri = (file) => {
+    const proj = projectRef.current || currentProject
+    const pid = proj?.projectId || 'proj'
+    const fid = file?.id || 'file'
+    const name = file?.name || 'untitled'
+    return window.monaco.Uri.parse(`inmemory:///${pid}/${fid}/${name}`)
+  }
+
   const handleSave = () => {
     console.log("Save button clicked")
     if (currentProject) {
@@ -229,28 +237,34 @@ function Editor() {
         const currentLanguage = getLanguage(selected.name)
         const content = selected.content || ""
 
-        // Get current model
+        // Desired URI unique per project+file id
+        const desiredUri = getModelUri(selected)
+
+        // Current model on editor and any existing model by URI
         const currentModel = monacoRef.current.getModel()
+        let targetModel = window.monaco.editor.getModel(desiredUri)
+        if (!targetModel) {
+          targetModel = window.monaco.editor.createModel(content, currentLanguage, desiredUri)
+        }
 
-        // Check if we need to change the model (different file or language)
-        const needsNewModel = !currentModel ||
-          currentModel.getLanguageId() !== currentLanguage ||
-          currentModel.uri.toString() !== `file:///${selected.name}`
-
-        if (needsNewModel) {
-          // Create a new model for the selected file
-          const newModel = window.monaco.editor.createModel(content, currentLanguage, window.monaco.Uri.parse(`file:///${selected.name}`))
-          monacoRef.current.setModel(newModel)
-
-          // Dispose the old model to prevent memory leaks
-          if (currentModel) {
-            currentModel.dispose()
+        // Swap to target model if different
+        if (!currentModel || currentModel.uri.toString() !== desiredUri.toString()) {
+          settingValueRef.current = true
+          monacoRef.current.setModel(targetModel)
+          if (currentModel && currentModel.uri.toString() !== desiredUri.toString()) {
+            try { currentModel.dispose() } catch {}
           }
-        } else {
-          // Just update the content if model is the same
-          if (currentModel.getValue() !== content) {
-            currentModel.setValue(content)
-          }
+        }
+
+        // Ensure correct language
+        if (targetModel.getLanguageId() !== currentLanguage) {
+          try { window.monaco.editor.setModelLanguage(targetModel, currentLanguage) } catch {}
+        }
+
+        // Ensure correct content
+        if (targetModel.getValue() !== content) {
+          settingValueRef.current = true
+          targetModel.setValue(content)
         }
 
         console.log("Editor updated with file:", selected.name, "content length:", content.length)

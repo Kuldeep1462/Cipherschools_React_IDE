@@ -20,8 +20,9 @@ function Login() {
         email,
         password,
       })
-      localStorage.setItem("token", response.data.token)
-      localStorage.setItem("userId", response.data.user.id)
+  localStorage.setItem("token", response.data.token)
+  localStorage.setItem("userId", response.data.user.id)
+  try { window.dispatchEvent(new CustomEvent("auth-changed", { detail: { isSignedIn: true, userId: response.data.user.id } })) } catch {}
       navigate("/")
     } catch (err) {
       setError(err.response?.data?.error || "Login failed. Please try again.")

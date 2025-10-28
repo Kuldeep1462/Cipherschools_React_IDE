@@ -5,6 +5,11 @@ const API_BASE_URL = __trimmed.endsWith('/api') ? __trimmed : `${__trimmed}/api`
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token")
+  // Ensure a stable guest id if not signed in
+  if (!localStorage.getItem("userId") && !token) {
+    const guestId = `guest-${Math.random().toString(36).slice(2)}-${Date.now()}`
+    localStorage.setItem("userId", guestId)
+  }
   const headers = {
     "Content-Type": "application/json",
   }
@@ -12,7 +17,7 @@ const getAuthHeaders = () => {
     headers.Authorization = `Bearer ${token}`
   }
   // For project routes, also add user-id header for backward compatibility
-  headers["user-id"] = localStorage.getItem("userId") || "user-123"
+  headers["user-id"] = localStorage.getItem("userId")
   return headers
 }
 
